@@ -70,7 +70,7 @@ func printBalance(w *wts.WTS) {
 	if err != nil {
 		fail(err.Error())
 	}
-	zld := float64(zents) / float64(2<<31)
+	zld := float64(zents) / float64(wts.ZldZents)
 	rate, err := w.UsdRate()
 	if err != nil {
 		failErr(err)

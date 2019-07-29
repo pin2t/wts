@@ -38,6 +38,8 @@ var (
 )
 
 const (
+	// ZldZents - zents in one ZLD
+	ZldZents = 2 << 31
 	hdrToken = "X-Zold-Wts"
 )
 
@@ -156,8 +158,8 @@ func (w *WTS) getText(path string) (string, error) {
 }
 
 func (t *Txn) String() string {
-	return fmt.Sprintf("%d %d %s",
-		t.ID, t.Amount, t.Details)
+	return fmt.Sprintf("[%d] %f ZLD: %s",
+		t.ID, float64(t.Amount)/float64(ZldZents), t.Details)
 }
 
 func (w *WTS) debug(msg string) {
