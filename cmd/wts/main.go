@@ -8,13 +8,19 @@ import (
 )
 
 func main() {
-	var token string
+	var token, filter string
+	var limit int
+	var debug bool
 	flag.StringVar(&token, "token", "", "API token")
+	flag.StringVar(&filter, "filter", ".*", "Transactions regexp filter")
+	flag.IntVar(&limit, "limit", -1, "Transactions limit")
+	flag.BoolVar(&debug, "debug", false, "Debug output")
 	flag.Parse()
 	if token == "" {
 		flag.Usage()
 	}
 	w, err := wts.Create(token)
+	w.Debug = debug
 	if err != nil {
 		panic(err)
 	}
@@ -27,9 +33,11 @@ func main() {
 		printID(w)
 	case "balance":
 		printBalance(w)
+	case "txns":
+		printTransactions(w, filter, limit)
 	default:
-		// @todo #1:30min Implement other actions, such as
-		//  pull and txns, see WTS readme file for
+		// @todo #3:30min Implement other actions, such as
+		//  pull and others, see WTS readme file for
 		//  more details about API methods.
 		fail(action + " - not implemented")
 	}
@@ -40,10 +48,14 @@ func fail(msg string) {
 	os.Exit(1)
 }
 
+func failErr(err error) {
+	fail(err.Error())
+}
+
 func printID(w *wts.WTS) {
 	id, err := w.ID()
 	if err != nil {
-		fail(err.Error())
+		failErr(err)
 	}
 	fmt.Printf("ID: %s\n", id)
 }
@@ -60,8 +72,18 @@ func printBalance(w *wts.WTS) {
 	zld := float64(zents) / float64(2<<31)
 	rate, err := w.UsdRate()
 	if err != nil {
-		fail(err.Error())
+		failErr(err)
 	}
 	usd := rate * zld
 	fmt.Printf("Balance: %f ZLD (%f USD)\n", zld, usd)
+}
+
+func printTransactions(w *wts.WTS, filter string, limit int) {
+	txns, err := w.Transactions(filter, limit)
+	if err != nil {
+		failErr(err)
+	}
+	for _, t := range txns {
+		fmt.Println(t.String())
+	}
 }

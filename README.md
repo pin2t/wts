@@ -45,3 +45,9 @@ Use this token for authentication: `wts -token yourtoken`
 Get wallet id: `wts -token yourtoken id`
 
 Get walle balance: `wts -token yourtoken balance`
+
+Get transactions: `wts -token yourtoken txns` returns full list of transactions,
+to filter by regexp use `-filter` option:
+`wts -token token -filter "@g4s8: Payment for gh:someproject.+" txns`,
+to limit the result use `-limit` option:
+`wts -token yourtoken -limit 10 txns`

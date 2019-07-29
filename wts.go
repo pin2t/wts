@@ -24,9 +24,12 @@
 package wts
 
 import (
+	"encoding/json"
 	"errors"
+	"fmt"
 	"io/ioutil"
 	"net/http"
+	"regexp"
 	"strconv"
 )
 
@@ -40,8 +43,18 @@ const (
 
 // WTS client
 type WTS struct {
-	cli  *http.Client
-	host string
+	cli   *http.Client
+	host  string
+	Debug bool
+}
+
+// Txn - WTS transaction
+type Txn struct {
+	ID      uint64 `json:"id"`
+	Date    string `json:"date"`
+	Amount  int64  `json:"amount"`
+	Prefix  string `json:"prefix"`
+	Details string `json:"details"`
 }
 
 // authTransport adds auth headers to HTTP requests
@@ -62,6 +75,7 @@ func Create(token string) (*WTS, error) {
 	return &WTS{
 		&http.Client{Transport: &authTransport{token}},
 		"https://wts.zold.io",
+		false,
 	}, nil
 }
 
@@ -96,6 +110,38 @@ func (w *WTS) UsdRate() (float64, error) {
 	return rate, nil
 }
 
+// Transactions of wallet
+func (w *WTS) Transactions(filter string, limit int) ([]Txn, error) {
+	var txns []Txn
+	rsp, err := w.cli.Get(w.host + "/txns.json?sort=desc")
+	if err != nil {
+		return nil, err
+	}
+	defer rsp.Body.Close()
+	if err := json.NewDecoder(rsp.Body).Decode(&txns); err != nil {
+		return nil, err
+	}
+	w.debug(fmt.Sprintf("Transactions(filter=%s, limit=%d): txns[%s]",
+		filter, limit, len(txns)))
+	if limit < 0 {
+		limit = len(txns)
+	}
+	result := make([]Txn, 0, limit)
+	ptn, err := regexp.Compile(filter)
+	if err != nil {
+		return nil, err
+	}
+	for pos, txn := range txns {
+		if pos >= limit {
+			break
+		}
+		if ptn.MatchString(txn.Details) {
+			result = append(result, txn)
+		}
+	}
+	return result, nil
+}
+
 func (w *WTS) getText(path string) (string, error) {
 	rsp, err := w.cli.Get(w.host + path)
 	if err != nil {
@@ -107,4 +153,15 @@ func (w *WTS) getText(path string) (string, error) {
 		return "", err
 	}
 	return string(data), nil
+}
+
+func (t *Txn) String() string {
+	return fmt.Sprintf("%d %d %s",
+		t.ID, t.Amount, t.Details)
+}
+
+func (w *WTS) debug(msg string) {
+	if w.Debug {
+		fmt.Println("DEBUG: " + msg)
+	}
 }
