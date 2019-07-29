@@ -13,6 +13,9 @@
 ## Install
 
 Download binary for your platform from Github releases:
+https://github.com/g4s8/wts/releases/latest
+
+Use shell script to get latest release binary (only Linux and MacOSx):
 ```sh
 curl -L https://raw.githubusercontent.com/g4s8/wts/master/scripts/download.sh | sh
 ```
