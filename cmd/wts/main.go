@@ -18,12 +18,13 @@ func main() {
 	flag.Parse()
 	if token == "" {
 		flag.Usage()
+		os.Exit(1)
 	}
 	w, err := wts.Create(token)
-	w.Debug = debug
 	if err != nil {
-		panic(err)
+		failErr(err)
 	}
+	w.Debug = debug
 	args := flag.Args()
 	if len(args) == 0 {
 		fail("action required: id|balance|txns|pull")

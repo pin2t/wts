@@ -23,7 +23,7 @@ curl -L https://raw.githubusercontent.com/g4s8/wts/master/scripts/download.sh | 
 On MacOS you can install it using `brew` tool:
 ```sh
 brew tap g4s8/.tap https://github.com/g4s8/.tap
-brew install g4s8/.tap/wts
+brew install wts
 ```
 
 Build from sources:
