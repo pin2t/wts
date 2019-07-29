@@ -121,7 +121,7 @@ func (w *WTS) Transactions(filter string, limit int) ([]Txn, error) {
 	if err := json.NewDecoder(rsp.Body).Decode(&txns); err != nil {
 		return nil, err
 	}
-	w.debug(fmt.Sprintf("Transactions(filter=%s, limit=%d): txns[%s]",
+	w.debug(fmt.Sprintf("Transactions(filter=%s, limit=%d): txns[%d]",
 		filter, limit, len(txns)))
 	if limit < 0 {
 		limit = len(txns)
