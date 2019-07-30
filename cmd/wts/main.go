@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"github.com/caarlos0/spin"
 	"github.com/g4s8/wts"
 	"os"
 )
@@ -63,7 +64,9 @@ func failErr(err error) {
 
 func printID(w *wts.WTS) {
 	pullIfNeeded(w)
+	s := spinner(" Loading %s")
 	id, err := w.ID()
+	s.Stop()
 	if err != nil {
 		failErr(err)
 	}
@@ -76,7 +79,9 @@ func printBalance(w *wts.WTS) {
 	//  numbers. It should be used to calculate
 	//  ZLD amount from zents and USD from ZLD.
 	pullIfNeeded(w)
+	s := spinner(" Loading %s")
 	zents, err := w.Balance()
+	s.Stop()
 	if err != nil {
 		fail(err.Error())
 	}
@@ -96,6 +101,7 @@ func pullIfNeeded(w *wts.WTS) {
 }
 
 func pullWallet(w *wts.WTS) {
+	defer spinner(" Pulling %s").Stop()
 	if err := w.Pull(); err != nil {
 		failErr(err)
 	}
@@ -103,11 +109,19 @@ func pullWallet(w *wts.WTS) {
 
 func printTransactions(w *wts.WTS) {
 	pullIfNeeded(w)
+	s := spinner(" Loading %s")
 	txns, err := w.Transactions(filter, limit)
+	s.Stop()
 	if err != nil {
 		failErr(err)
 	}
 	for _, t := range txns {
 		fmt.Println(t.String())
 	}
+}
+
+func spinner(lbl string) *spin.Spinner {
+	s := spin.New(lbl)
+	s.Set(spin.Spin1)
+	return s.Start()
 }
