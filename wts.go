@@ -36,7 +36,6 @@ import (
 
 var (
 	errInvalidToken = errors.New("Invalid token")
-	errFailedPull   = errors.New("Failed to pull")
 )
 
 const (
@@ -172,7 +171,6 @@ func (w *WTS) Pull() error {
 		}
 		time.Sleep(1 * time.Second)
 	}
-	return errFailedPull
 }
 
 func (w *WTS) getText(path string) (string, error) {
