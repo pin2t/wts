@@ -45,12 +45,17 @@ Use this token for authentication: `wts -token yourtoken`
  should override config token on conflicts.
 -->
 
-Get wallet id: `wts -token yourtoken id`
+Usage: `wts [options] (argument)`
 
-Get walle balance: `wts -token yourtoken balance`
+where options are:
+ - `-token <token>` (required) - API token
+ - `-pull` (optional) - pull wallet from network before action
+ - `-debug` (optional) - show debug logs
 
-Get transactions: `wts -token yourtoken txns` returns full list of transactions,
-to filter by regexp use `-filter` option:
-`wts -token token -filter "@g4s8: Payment for gh:someproject.+" txns`,
-to limit the result use `-limit` option:
-`wts -token yourtoken -limit 10 txns`
+actions are:
+ - `id` - print wallet id
+ - `balance` - show balance
+ - `txns` - show transaction list, additional options are:
+   - `-filter` - regex filter
+   - `-limit` - transaction limit
+

@@ -7,13 +7,19 @@ import (
 	"os"
 )
 
+var (
+	token  string
+	filter string
+	limit  int
+	debug  bool
+	pull   bool
+)
+
 func main() {
-	var token, filter string
-	var limit int
-	var debug bool
 	flag.StringVar(&token, "token", "", "API token")
 	flag.StringVar(&filter, "filter", ".*", "Transactions regexp filter")
 	flag.IntVar(&limit, "limit", -1, "Transactions limit")
+	flag.BoolVar(&pull, "pull", false, "Pull wallet first")
 	flag.BoolVar(&debug, "debug", false, "Debug output")
 	flag.Parse()
 	if token == "" {
@@ -35,7 +41,9 @@ func main() {
 	case "balance":
 		printBalance(w)
 	case "txns":
-		printTransactions(w, filter, limit)
+		printTransactions(w)
+	case "pull":
+		pullWallet(w)
 	default:
 		// @todo #3:30min Implement other actions, such as
 		//  pull and others, see WTS readme file for
@@ -54,6 +62,7 @@ func failErr(err error) {
 }
 
 func printID(w *wts.WTS) {
+	pullIfNeeded(w)
 	id, err := w.ID()
 	if err != nil {
 		failErr(err)
@@ -66,6 +75,7 @@ func printBalance(w *wts.WTS) {
 	//  to operate with arbitrary-precision
 	//  numbers. It should be used to calculate
 	//  ZLD amount from zents and USD from ZLD.
+	pullIfNeeded(w)
 	zents, err := w.Balance()
 	if err != nil {
 		fail(err.Error())
@@ -79,7 +89,20 @@ func printBalance(w *wts.WTS) {
 	fmt.Printf("Balance: %f ZLD (%f USD)\n", zld, usd)
 }
 
-func printTransactions(w *wts.WTS, filter string, limit int) {
+func pullIfNeeded(w *wts.WTS) {
+	if pull {
+		pullWallet(w)
+	}
+}
+
+func pullWallet(w *wts.WTS) {
+	if err := w.Pull(); err != nil {
+		failErr(err)
+	}
+}
+
+func printTransactions(w *wts.WTS) {
+	pullIfNeeded(w)
 	txns, err := w.Transactions(filter, limit)
 	if err != nil {
 		failErr(err)

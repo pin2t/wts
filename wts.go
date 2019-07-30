@@ -31,10 +31,12 @@ import (
 	"net/http"
 	"regexp"
 	"strconv"
+	"time"
 )
 
 var (
 	errInvalidToken = errors.New("Invalid token")
+	errFailedPull   = errors.New("Failed to pull")
 )
 
 const (
@@ -142,6 +144,35 @@ func (w *WTS) Transactions(filter string, limit int) ([]Txn, error) {
 		}
 	}
 	return result, nil
+}
+
+// Pull wallet from the network
+func (w *WTS) Pull() error {
+	rsp, err := w.cli.Get(w.host + "/pull?noredirect=1")
+	if err != nil {
+		return err
+	}
+	job := rsp.Header.Get("X-Zold-Job")
+	w.debug(fmt.Sprintf("pulling wallet, job=%s", job))
+	var done bool
+	for {
+		rsp, err := w.cli.Get(w.host + "/job?id=" + job)
+		if err != nil {
+			return err
+		}
+		defer rsp.Body.Close()
+		b, err := ioutil.ReadAll(rsp.Body)
+		if err != nil {
+			return err
+		}
+		w.debug(fmt.Sprintf("pulling, status=%s", string(b)))
+		done = string(b) == "OK"
+		if done {
+			return nil
+		}
+		time.Sleep(1 * time.Second)
+	}
+	return errFailedPull
 }
 
 func (w *WTS) getText(path string) (string, error) {
