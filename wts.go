@@ -62,12 +62,38 @@ type Txn struct {
 
 // authTransport adds auth headers to HTTP requests
 type authTransport struct {
+	base  http.RoundTripper
 	token string
 }
 
 func (t *authTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	req.Header.Add(hdrToken, t.token)
-	return http.DefaultTransport.RoundTrip(req)
+	return t.base.RoundTrip(req)
+}
+
+type wtsErrTransport struct {
+	base http.RoundTripper
+}
+
+func (t *wtsErrTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	url := req.URL
+	q := url.Query()
+	q.Add("noredirect", "1")
+	url.RawQuery = q.Encode()
+	req.URL = url
+	rsp, err := t.base.RoundTrip(req)
+	if err != nil {
+		return rsp, err
+	}
+	if rsp.StatusCode != 200 {
+		hdr := rsp.Header.Get("X-Zold-Error")
+		if hdr != "" {
+			return nil, errors.New(hdr)
+		}
+		return nil, fmt.Errorf("WTS returned %d without error description",
+			rsp.StatusCode)
+	}
+	return rsp, nil
 }
 
 // Create new WTS client
@@ -75,8 +101,12 @@ func Create(token string) (*WTS, error) {
 	if token == "" {
 		return nil, errInvalidToken
 	}
+	t := &authTransport{
+		&wtsErrTransport{http.DefaultTransport},
+		token,
+	}
 	return &WTS{
-		&http.Client{Transport: &authTransport{token}},
+		&http.Client{Transport: t},
 		"https://wts.zold.io",
 		false,
 	}, nil
@@ -147,7 +177,7 @@ func (w *WTS) Transactions(filter string, limit int) ([]Txn, error) {
 
 // Pull wallet from the network
 func (w *WTS) Pull() error {
-	rsp, err := w.cli.Get(w.host + "/pull?noredirect=1")
+	rsp, err := w.cli.Get(w.host + "/pull")
 	if err != nil {
 		return err
 	}
@@ -187,8 +217,8 @@ func (w *WTS) getText(path string) (string, error) {
 }
 
 func (t *Txn) String() string {
-	return fmt.Sprintf("[%d] %f ZLD: %s",
-		t.ID, float64(t.Amount)/float64(ZldZents), t.Details)
+	return fmt.Sprintf("[%d] (%s) %f ZLD: %s",
+		t.ID, t.Date, float64(t.Amount)/float64(ZldZents), t.Details)
 }
 
 func (w *WTS) debug(msg string) {

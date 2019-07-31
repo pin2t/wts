@@ -34,7 +34,7 @@ func main() {
 	w.Debug = debug
 	args := flag.Args()
 	if len(args) == 0 {
-		fail("action required: id|balance|txns|pull")
+		fail("action required: id|balance|txns|pull|rate")
 	}
 	switch action := args[0]; action {
 	case "id":
@@ -45,6 +45,8 @@ func main() {
 		printTransactions(w)
 	case "pull":
 		pullWallet(w)
+	case "rate":
+		printRate(w)
 	default:
 		// @todo #3:30min Implement other actions, such as
 		//  pull and others, see WTS readme file for
@@ -71,6 +73,16 @@ func printID(w *wts.WTS) {
 		failErr(err)
 	}
 	fmt.Printf("ID: %s\n", id)
+}
+
+func printRate(w *wts.WTS) {
+	s := spinner(" Loading %s")
+	r, err := w.UsdRate()
+	s.Stop()
+	if err != nil {
+		failErr(err)
+	}
+	fmt.Printf("ZLD:USD = %f\n", r)
 }
 
 func printBalance(w *wts.WTS) {
