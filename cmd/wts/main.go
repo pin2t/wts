@@ -9,25 +9,41 @@ import (
 )
 
 var (
-	token  string
+	cfg    = new(Config)
 	filter string
 	limit  int
-	debug  bool
-	pull   bool
 )
 
 func main() {
+	var debug bool
+	var pull bool
+	var config string
+	var token string
 	flag.StringVar(&token, "token", "", "API token")
 	flag.StringVar(&filter, "filter", ".*", "Transactions regexp filter")
 	flag.IntVar(&limit, "limit", -1, "Transactions limit")
 	flag.BoolVar(&pull, "pull", false, "Pull wallet first")
 	flag.BoolVar(&debug, "debug", false, "Debug output")
+	flag.StringVar(&config, "config", "$HOME/.config/wts/config.yml",
+		"Config file location")
 	flag.Parse()
-	if token == "" {
-		flag.Usage()
-		os.Exit(1)
+	if err := cfg.ParseFile(config); err != nil {
+		failErr(err)
 	}
-	w, err := wts.Create(token)
+	if token != "" && token != cfg.Wts.Token {
+		cfg.Wts.Token = token
+	}
+	if debug != cfg.Wts.Debug {
+		cfg.Wts.Debug = debug
+	}
+	if pull != cfg.Wts.Pull {
+		cfg.Wts.Pull = pull
+	}
+	if cfg.Wts.Token == "" {
+		flag.Usage()
+		fail("No token provided")
+	}
+	w, err := wts.Create(cfg.Wts.Token)
 	if err != nil {
 		failErr(err)
 	}
@@ -48,9 +64,6 @@ func main() {
 	case "rate":
 		printRate(w)
 	default:
-		// @todo #3:30min Implement other actions, such as
-		//  pull and others, see WTS readme file for
-		//  more details about API methods.
 		fail(action + " - not implemented")
 	}
 }
@@ -93,12 +106,13 @@ func printBalance(w *wts.WTS) {
 	pullIfNeeded(w)
 	s := spinner(" Loading %s")
 	zents, err := w.Balance()
-	s.Stop()
 	if err != nil {
+		s.Stop()
 		fail(err.Error())
 	}
 	zld := float64(zents) / float64(wts.ZldZents)
 	rate, err := w.UsdRate()
+	s.Stop()
 	if err != nil {
 		failErr(err)
 	}
@@ -107,7 +121,7 @@ func printBalance(w *wts.WTS) {
 }
 
 func pullIfNeeded(w *wts.WTS) {
-	if pull {
+	if cfg.Wts.Pull {
 		pullWallet(w)
 	}
 }
