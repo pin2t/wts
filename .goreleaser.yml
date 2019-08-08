@@ -1,6 +1,7 @@
+---
 builds:
   -
-    main: ./cmd/wts/main.go
+    main: ./cmd/wts/
     env:
       - CGO_ENABLED=0
     ldflags:
