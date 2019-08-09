@@ -58,4 +58,6 @@ actions are:
  - `txns` - show transaction list, additional options are:
    - `-filter` - regex filter
    - `-limit` - transaction limit
+ - `stats` - show statistic for period
+   - `-period` - days for statistic
 

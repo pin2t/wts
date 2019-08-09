@@ -143,8 +143,57 @@ func (w *WTS) UsdRate() (float64, error) {
 	return rate, nil
 }
 
+// TxFilter filters transaction by some criteria
+type TxFilter interface {
+	// Check transaction
+	Check(t *Txn) bool
+}
+
+type txFilterRegex struct {
+	ptn *regexp.Regexp
+}
+
+// TxFilterRegex - new regex filter or error
+func TxFilterRegex(pattern string) (TxFilter, error) {
+	ptn, err := regexp.Compile(pattern)
+	if err != nil {
+		return nil, err
+	}
+	return &txFilterRegex{ptn}, nil
+}
+
+func (f *txFilterRegex) Check(t *Txn) bool {
+	return f.ptn.MatchString(t.Details)
+}
+
+type txFilterSince struct {
+	since *time.Time
+}
+
+func (f *txFilterSince) Check(t *Txn) bool {
+	ts, err := time.Parse(time.RFC3339, t.Date)
+	if err != nil {
+		panic(err)
+	}
+	return ts.After(*f.since)
+}
+
+// TxFilterSince time
+func TxFilterSince(t *time.Time) TxFilter {
+	return &txFilterSince{t}
+}
+
+// TxFilterNone - no filter
+var TxFilterNone = &txFilterNone{}
+
+type txFilterNone struct{}
+
+func (f *txFilterNone) Check(t *Txn) bool {
+	return true
+}
+
 // Transactions of wallet
-func (w *WTS) Transactions(filter string, limit int) ([]Txn, error) {
+func (w *WTS) Transactions(filter TxFilter, limit int) ([]Txn, error) {
 	var txns []Txn
 	rsp, err := w.cli.Get(w.host + "/txns.json?sort=desc")
 	if err != nil {
@@ -154,21 +203,15 @@ func (w *WTS) Transactions(filter string, limit int) ([]Txn, error) {
 	if err := json.NewDecoder(rsp.Body).Decode(&txns); err != nil {
 		return nil, err
 	}
-	w.debug(fmt.Sprintf("Transactions(filter=%s, limit=%d): txns[%d]",
-		filter, limit, len(txns)))
 	if limit < 0 {
 		limit = len(txns)
 	}
 	result := make([]Txn, 0, limit)
-	ptn, err := regexp.Compile(filter)
-	if err != nil {
-		return nil, err
-	}
 	for pos, txn := range txns {
 		if pos >= limit {
 			break
 		}
-		if ptn.MatchString(txn.Details) {
+		if filter.Check(&txn) {
 			result = append(result, txn)
 		}
 	}

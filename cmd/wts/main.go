@@ -5,13 +5,17 @@ import (
 	"fmt"
 	"github.com/caarlos0/spin"
 	"github.com/g4s8/wts"
+	"math/big"
 	"os"
+	"strconv"
+	"time"
 )
 
 var (
 	cfg    = new(Config)
 	filter string
 	limit  int
+	period string
 )
 
 func main() {
@@ -24,6 +28,7 @@ func main() {
 	flag.IntVar(&limit, "limit", -1, "Transactions limit")
 	flag.BoolVar(&pull, "pull", false, "Pull wallet first")
 	flag.BoolVar(&debug, "debug", false, "Debug output")
+	flag.StringVar(&period, "period", "", "Days for statistic")
 	flag.StringVar(&config, "config", "$HOME/.config/wts/config.yml",
 		"Config file location")
 	flag.Parse()
@@ -63,6 +68,8 @@ func main() {
 		pullWallet(w)
 	case "rate":
 		printRate(w)
+	case "stats":
+		printStats(w)
 	default:
 		fail(action + " - not implemented")
 	}
@@ -75,6 +82,45 @@ func fail(msg string) {
 
 func failErr(err error) {
 	fail(err.Error())
+}
+
+func printStats(w *wts.WTS) {
+	if period == "" {
+		fail("-period was not specified")
+	}
+	days, err := strconv.ParseInt(period, 10, 64)
+	if err != nil {
+		failErr(err)
+	}
+	dur := time.Duration(days) * 24 * time.Hour
+	t := time.Now().Add(-dur)
+	filter := wts.TxFilterSince(&t)
+	pullIfNeeded(w)
+	s := spinner(" Loading %s")
+	txns, err := w.Transactions(filter, limit)
+	s.Stop()
+	if err != nil {
+		failErr(err)
+	}
+	s = spinner(" Calculating %s")
+	in := new(big.Float)
+	out := new(big.Float)
+	amt := new(big.Float)
+	znts := new(big.Float).SetInt64(wts.ZldZents)
+	zero := new(big.Float).SetInt64(0)
+	for _, t := range txns {
+		amt.SetInt64(t.Amount)
+		amt.Quo(amt, znts)
+		if amt.Cmp(zero) > 0 {
+			in.Add(in, amt)
+		} else if amt.Cmp(zero) < 0 {
+			out.Add(out, amt)
+		}
+	}
+	s.Stop()
+	fmt.Printf("Stats for period: %s\n", period)
+	fmt.Printf("\tIN:  %s\n", in.Text('f', 6))
+	fmt.Printf("\tOUT: %s\n", out.Text('f', 6))
 }
 
 func printID(w *wts.WTS) {
@@ -136,7 +182,17 @@ func pullWallet(w *wts.WTS) {
 func printTransactions(w *wts.WTS) {
 	pullIfNeeded(w)
 	s := spinner(" Loading %s")
-	txns, err := w.Transactions(filter, limit)
+	var f wts.TxFilter
+	if filter == "" {
+		f = wts.TxFilterNone
+	} else {
+		ft, err := wts.TxFilterRegex(filter)
+		if err != nil {
+			failErr(err)
+		}
+		f = ft
+	}
+	txns, err := w.Transactions(f, limit)
 	s.Stop()
 	if err != nil {
 		failErr(err)
