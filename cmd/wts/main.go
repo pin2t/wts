@@ -17,6 +17,7 @@ var (
 	filter string
 	limit  int
 	period string
+	pind   bool
 )
 
 func main() {
@@ -34,6 +35,7 @@ func main() {
 	flag.StringVar(&config, "config", "$HOME/.config/wts/config.yml",
 		"Config file location")
 	flag.StringVar(&templ, "fmt", "", "Output format (advanced)")
+	flag.BoolVar(&pind, "progress", true, "Show progress indicator")
 	flag.Parse()
 	if err := cfg.ParseFile(config); err != nil {
 		failErr(err)
@@ -214,8 +216,28 @@ func printTransactions(w *wts.WTS) {
 	}
 }
 
-func spinner(lbl string) *spin.Spinner {
-	s := spin.New(lbl)
-	s.Set(spin.Spin1)
-	return s.Start()
+type progress interface {
+	Stop()
+}
+
+type stubProg struct{}
+
+func (s *stubProg) Stop() {}
+
+type spinnerProg struct {
+	spinner *spin.Spinner
+}
+
+func (s *spinnerProg) Stop() {
+	s.spinner.Stop()
+}
+
+func spinner(lbl string) progress {
+	if pind {
+		s := spin.New(lbl)
+		s.Set(spin.Spin1)
+		s.Start()
+		return &spinnerProg{s}
+	}
+	return new(stubProg)
 }
