@@ -8,6 +8,7 @@ import (
 	"math/big"
 	"os"
 	"strconv"
+	"text/template"
 	"time"
 )
 
@@ -23,6 +24,7 @@ func main() {
 	var pull bool
 	var config string
 	var token string
+	var templ string
 	flag.StringVar(&token, "token", "", "API token")
 	flag.StringVar(&filter, "filter", ".*", "Transactions regexp filter")
 	flag.IntVar(&limit, "limit", -1, "Transactions limit")
@@ -31,6 +33,7 @@ func main() {
 	flag.StringVar(&period, "period", "", "Days for statistic")
 	flag.StringVar(&config, "config", "$HOME/.config/wts/config.yml",
 		"Config file location")
+	flag.StringVar(&templ, "fmt", "", "Output format (advanced)")
 	flag.Parse()
 	if err := cfg.ParseFile(config); err != nil {
 		failErr(err)
@@ -61,7 +64,10 @@ func main() {
 	case "id":
 		printID(w)
 	case "balance":
-		printBalance(w)
+		if templ == "" {
+			templ = "{{printf \"%.2f\" .Zld}} ZLD (${{ printf \"%.2f\" .Usd}})\n"
+		}
+		printBalance(w, templ)
 	case "txns":
 		printTransactions(w)
 	case "pull":
@@ -144,7 +150,7 @@ func printRate(w *wts.WTS) {
 	fmt.Printf("ZLD:USD = %f\n", r)
 }
 
-func printBalance(w *wts.WTS) {
+func printBalance(w *wts.WTS, t string) {
 	// @todo #1:30min Use math/big & big.Float
 	//  to operate with arbitrary-precision
 	//  numbers. It should be used to calculate
@@ -156,14 +162,20 @@ func printBalance(w *wts.WTS) {
 		s.Stop()
 		fail(err.Error())
 	}
-	zld := float64(zents) / float64(wts.ZldZents)
+	var b struct {
+		Zld float64
+		Usd float64
+	}
+	b.Zld = float64(zents) / float64(wts.ZldZents)
 	rate, err := w.UsdRate()
 	s.Stop()
 	if err != nil {
 		failErr(err)
 	}
-	usd := rate * zld
-	fmt.Printf("Balance: %f ZLD (%f USD)\n", zld, usd)
+
+	b.Usd = rate * b.Zld
+	tpl := template.Must(template.New("balance").Parse(t))
+	tpl.Execute(os.Stdout, b)
 }
 
 func pullIfNeeded(w *wts.WTS) {
