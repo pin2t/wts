@@ -37,20 +37,26 @@ go build ./cmd/wts/
 ## Usage
 
 Login to [WTS](https://wts.zold.io/) and get [API token](https://wts.zold.io/api).
+You may put this token to configuration file or add as command parameter explicitly.
 
-Use this token for authentication: `wts -token yourtoken`
-<!--
-@todo #1:30min Read configuration file `~/.config/wts/config.yaml`
- where API token can be located. CLI `-token` parameter
- should override config token on conflicts.
--->
+Configuration file should be localted at `~/.config/wts/config.yml`:
+```yaml
+---
+version: V1
+wts:
+  token: "...API token..."
+  debug: true # show debug output, default false
+  pull: true # pull wallet before each operation, default false
+```
 
 Usage: `wts [options] (argument)`
 
 where options are:
- - `-token <token>` (required) - API token
- - `-pull` (optional) - pull wallet from network before action
- - `-debug` (optional) - show debug logs
+ - `-token <token>` (required if not specified in the `config.yml`) - API token
+ - `-debug` - show debug output (default `false`)
+ - `-progress` - use `-progress=false` to hide progress spinner (default `true`)
+ - `-pull` - pull wallet before operation
+ - `-config` - use custom config file location (default `$HOME/.config/wts/config.yml`)
 
 actions are:
  - `id` - print wallet id
