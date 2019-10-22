@@ -84,7 +84,7 @@ func main() {
 }
 
 func fail(msg string) {
-	fmt.Println(msg)
+	fmt.Fprintln(os.Stderr, msg)
 	os.Exit(1)
 }
 
