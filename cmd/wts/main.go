@@ -60,7 +60,7 @@ func main() {
 	w.Debug = debug
 	args := flag.Args()
 	if len(args) == 0 {
-		fail("action required: id|balance|txns|pull|rate")
+		fail("action required: id|balance|txns|pull|rate|pay")
 	}
 	switch action := args[0]; action {
 	case "id":
@@ -78,6 +78,8 @@ func main() {
 		printRate(w)
 	case "stats":
 		printStats(w)
+	case "pay":
+		pay(w, args[1], args[2], args[3], args[4])
 	default:
 		fail(action + " - not implemented")
 	}
@@ -213,6 +215,16 @@ func printTransactions(w *wts.WTS) {
 	}
 	for _, t := range txns {
 		fmt.Println(t.String())
+	}
+}
+
+func pay(w *wts.WTS, to string, amount string, keygap string, desc string) {
+	pullIfNeeded(w)
+	defer spinner(fmt.Sprintf(" Sending %s ZLD to %s", amount, to)).Stop()
+	amt, _ := strconv.ParseFloat(amount, 64)
+	err := w.Pay(to, uint64(amt * wts.ZldZents), desc, keygap)
+	if err != nil {
+		failErr(err)
 	}
 }
 

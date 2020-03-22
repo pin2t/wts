@@ -29,6 +29,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"net/url"
 	"regexp"
 	"strconv"
 	"time"
@@ -218,15 +219,8 @@ func (w *WTS) Transactions(filter TxFilter, limit int) ([]Txn, error) {
 	return result, nil
 }
 
-// Pull wallet from the network
-func (w *WTS) Pull() error {
-	rsp, err := w.cli.Get(w.host + "/pull")
-	if err != nil {
-		return err
-	}
-	job := rsp.Header.Get("X-Zold-Job")
-	w.debug(fmt.Sprintf("pulling wallet, job=%s", job))
-	var done bool
+// Waits a job until it finish
+func (w *WTS) waitJob(job string) error {
 	for {
 		rsp, err := w.cli.Get(w.host + "/job?id=" + job)
 		if err != nil {
@@ -237,13 +231,24 @@ func (w *WTS) Pull() error {
 		if err != nil {
 			return err
 		}
-		w.debug(fmt.Sprintf("pulling, status=%s", string(b)))
-		done = string(b) == "OK"
-		if done {
+		w.debug(fmt.Sprintf("waiting job %s, status=%s", job, string(b)))
+		if string(b) == "OK" {
 			return nil
 		}
 		time.Sleep(1 * time.Second)
 	}
+}
+
+// Pull wallet from the network
+func (w *WTS) Pull() error {
+	rsp, err := w.cli.Get(w.host + "/pull")
+	if err != nil {
+		return err
+	}
+	job := rsp.Header.Get("X-Zold-Job")
+	w.debug(fmt.Sprintf("pulling wallet, job=%s", job))
+	w.waitJob(job)
+	return nil
 }
 
 func (w *WTS) getText(path string) (string, error) {
@@ -268,4 +273,21 @@ func (w *WTS) debug(msg string) {
 	if w.Debug {
 		fmt.Println("DEBUG: " + msg)
 	}
+}
+
+func (w *WTS) Pay(to string, amount uint64, keygap, desc string) error {
+	if desc == "" { desc = "payment" }
+	params := url.Values{}
+	params.Add("bnf", to)
+	params.Add("amount", fmt.Sprintf("%dz", amount))
+	params.Add("details", desc)
+	params.Add("keygap", keygap)
+	response, err := w.cli.PostForm(w.host + "/do-pay", params)
+	if err != nil {
+		return err
+	}
+	job := response.Header.Get("X-Zold-Job")
+	w.debug(fmt.Sprintf("payment job %s", job))
+	w.waitJob(job)
+	return nil
 }
