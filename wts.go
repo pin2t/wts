@@ -276,13 +276,15 @@ func (w *WTS) debug(msg string) {
 }
 
 func (w *WTS) Pay(to string, amount uint64, keygap, desc string) error {
-	if desc == "" { desc = "payment" }
+	if desc == "" {
+		desc = "payment"
+	}
 	params := url.Values{}
 	params.Add("bnf", to)
 	params.Add("amount", fmt.Sprintf("%dz", amount))
 	params.Add("details", desc)
 	params.Add("keygap", keygap)
-	response, err := w.cli.PostForm(w.host + "/do-pay", params)
+	response, err := w.cli.PostForm(w.host+"/do-pay", params)
 	if err != nil {
 		return err
 	}

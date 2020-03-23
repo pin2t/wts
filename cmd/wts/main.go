@@ -3,13 +3,14 @@ package main
 import (
 	"flag"
 	"fmt"
-	"github.com/caarlos0/spin"
-	"github.com/g4s8/wts"
 	"math/big"
 	"os"
 	"strconv"
 	"text/template"
 	"time"
+
+	"github.com/caarlos0/spin"
+	"github.com/g4s8/wts"
 )
 
 var (
@@ -79,6 +80,10 @@ func main() {
 	case "stats":
 		printStats(w)
 	case "pay":
+		if len(args) != 5 {
+			fail("Invalid payment command format. The correct one is " +
+				"wts -token ... pay <destination> <amount> <keygap> <description>")
+		}
 		pay(w, args[1], args[2], args[3], args[4])
 	default:
 		fail(action + " - not implemented")
@@ -222,7 +227,7 @@ func pay(w *wts.WTS, to string, amount string, keygap string, desc string) {
 	pullIfNeeded(w)
 	defer spinner(fmt.Sprintf(" Sending %s ZLD to %s", amount, to)).Stop()
 	amt, _ := strconv.ParseFloat(amount, 64)
-	err := w.Pay(to, uint64(amt * wts.ZldZents), desc, keygap)
+	err := w.Pay(to, uint64(amt*wts.ZldZents), keygap, desc)
 	if err != nil {
 		failErr(err)
 	}
