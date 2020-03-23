@@ -66,6 +66,6 @@ actions are:
    - `-limit` - transaction limit
  - `stats` - show statistic for period
    - `-period` - days for statistic
- - `pay <destination> <amount> <keygap> <description>` - send an <amount> ZLD to <destination> address (or github login @name) 
+ - `pay <destination> <amount> <keygap> <description>` - send an `amount` ZLD to `destination` address (or github login @name) 
 
 
